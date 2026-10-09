@@ -266,11 +266,11 @@
   (foreach a (vlax-invoke o 'GetAttributes)
     (if (= (strcase (vla-get-TagString a)) "NUM")
       (setq r (vla-get-TextString a))))
-  (or r ""))
+  (if r r ""))
 
 ;; Estilo (1..3) de una referencia de etiqueta.
 (defun etq_est-de (o)
-  (or (car (etq_parse (vla-get-Name o))) 1))
+  (if (etq_parse (vla-get-Name o)) (car (etq_parse (vla-get-Name o))) 1))
 
 ;; Punto de insercion (3D) de una referencia.
 (defun etq_ins (o)
@@ -471,12 +471,12 @@
         (setq en   (ssname ss i) i (1+ i)
               o    (vlax-ename->vla-object en)
               est0 (etq_est-de o)
-              items (cons (list (or (etq_tipo-de en) "")        ; 0 tipo
+              items (cons (list (if (etq_tipo-de en) (etq_tipo-de en) "")  ; 0 tipo
                                 (etq_texto o)                   ; 1 numero
                                 (etq_ins o)                     ; 2 posicion
                                 (vla-get-Rotation o)            ; 3 giro
                                 (* (vla-get-XScaleFactor o) (etq_ah est0)) ; 4 altura
-                                (or estn est0))                 ; 5 estilo
+                                (if estn estn est0))             ; 5 estilo
                           items)))
       (setq items (vl-sort items
                            '(lambda (a b)
@@ -706,5 +706,5 @@
   (prompt (strcat "\nATENCION: ETARB cargado INCOMPLETO. Faltan: "
                   (apply 'strcat (mapcar '(lambda (f) (strcat (vl-symbol-name f) " ")) *etq-faltan*))
                   "\nVuelva a copiar el archivo ETARB.lsp completo y cargue de nuevo."))
-  (prompt "\nETARB v6 cargado: ETARB, ETARBEDIT, ETARBESC, ETARBROT, ETARBESTILO, ETARBACOMODAR, ETARBFRENTE, ETARBBORRAR."))
+  (prompt "\nETARB v7 cargado: ETARB, ETARBEDIT, ETARBESC, ETARBROT, ETARBESTILO, ETARBACOMODAR, ETARBFRENTE, ETARBBORRAR."))
 (princ)
