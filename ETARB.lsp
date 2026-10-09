@@ -465,6 +465,46 @@
                (cons 2 "ETQ_MEDALLON_*,ETQ_LLAMADA_*,ETQ_HEXAGONO_*")
                (cons 8 (etq_capa)))))
 
+;; Tipos de punto presentes en un conjunto de etiquetas: ((tipo . cantidad) ...)
+(defun etq_tipos-sel (ss / i en tp g r)
+  (setq i 0)
+  (repeat (sslength ss)
+    (setq en (ssname ss i) i (1+ i) tp (etq_tipo-de en))
+    (if (not tp) (setq tp "(sin tipo)"))
+    (if (setq g (assoc tp r))
+      (setq r (subst (cons tp (1+ (cdr g))) g r))
+      (setq r (cons (cons tp 1) r))))
+  (vl-sort r '(lambda (a b) (< (car a) (car b)))))
+
+;; Lista los tipos y pide cual (numero o Todos). Devuelve lista de nombres.
+(defun etq_elegir-tipo-etq (tipos msg / k r)
+  (prompt "\nTipos de punto con etiqueta en el area:")
+  (setq k 0)
+  (foreach g tipos
+    (setq k (1+ k))
+    (prompt (strcat "\n  " (itoa k) ") " (car g) "  -  " (itoa (cdr g)) " etiq.")))
+  (if (= k 1)
+    (list (car (car tipos)))
+    (progn
+      (while (not r)
+        (initget 6 "Todos")
+        (setq r (getint (strcat "\n" msg " [1-" (itoa k) "/Todos] <Todos>: ")))
+        (cond ((null r) (setq r "Todos"))
+              ((equal r "Todos"))
+              ((> r k) (prompt "\nNumero fuera de rango.") (setq r nil))))
+      (if (equal r "Todos")
+        (mapcar 'car tipos)
+        (list (car (nth (1- r) tipos)))))))
+
+;; Subconjunto de ss con las etiquetas cuyo tipo esta en nombres.
+(defun etq_filtrar-tipos (ss nombres / i en tp r)
+  (setq r (ssadd) i 0)
+  (repeat (sslength ss)
+    (setq en (ssname ss i) i (1+ i) tp (etq_tipo-de en))
+    (if (not tp) (setq tp "(sin tipo)"))
+    (if (member tp nombres) (ssadd en r)))
+  (if (> (sslength r) 0) r))
+
 ;; Reconstruye las etiquetas del conjunto ss (conserva numero, tipo, posicion,
 ;; giro y altura) recalculando la direccion para evitar cruces con las demas
 ;; etiquetas y con los arboles. Si estn no es nil, ademas cambia ese conjunto
@@ -684,6 +724,10 @@
       (prompt "\nSeleccione el AREA con las etiquetas a cambiar (ventana, cruce, WP, CP...): ")
       (if (setq ss (etq_sel-etiquetas))
         (progn
+          ;; 2) tipo de punto cuyas etiquetas se cambian
+          (setq ss (etq_filtrar-tipos
+                     ss (etq_elegir-tipo-etq (etq_tipos-sel ss) "Tipo de punto a cambiar")))
+          ;; 3) estilo nuevo
           (setq *etq-est* (etq_pedir-estilo *etq-est*))
           (etq_reconstruir ss *etq-est*))
         (prompt "\nNada seleccionado."))
@@ -728,7 +772,7 @@
       etq_ins etq_max-num etq_sin-etiqueta etq_tipo etq_pos etq_agrupar etq_elegir
       etq_curva-p etq_dist-recorrido etq_ordenar etq_vecino etq_obs-de
       etq_obs-existente etq_holgura etq_mejor-dir etq_poner etq_poner-auto
-      etq_frente etq_sel-etiquetas etq_reconstruir etq_cada etq_regen etq_angulo-vista
+      etq_frente etq_sel-etiquetas etq_tipos-sel etq_elegir-tipo-etq etq_filtrar-tipos etq_reconstruir etq_cada etq_regen etq_angulo-vista
       etq_pedir-angulo etq_pedir-estilo etq_escalar etq_aplicar-escala
       etq_aplicar-giro etq_abrir etq_cerrar
       c:ETARB c:ETARBEDIT c:ETARBESC c:ETARBROT c:ETARBESTILO c:ETARBACOMODAR
@@ -738,5 +782,5 @@
   (prompt (strcat "\nATENCION: ETARB cargado INCOMPLETO. Faltan: "
                   (apply 'strcat (mapcar '(lambda (f) (strcat (vl-symbol-name f) " ")) *etq-faltan*))
                   "\nVuelva a copiar el archivo ETARB.lsp completo y cargue de nuevo."))
-  (prompt "\nETARB v8 cargado: ETARB, ETARBEDIT, ETARBESC, ETARBROT, ETARBESTILO, ETARBACOMODAR, ETARBFRENTE, ETARBBORRAR."))
+  (prompt "\nETARB v9 cargado: ETARB, ETARBEDIT, ETARBESC, ETARBROT, ETARBESTILO, ETARBACOMODAR, ETARBFRENTE, ETARBBORRAR."))
 (princ)

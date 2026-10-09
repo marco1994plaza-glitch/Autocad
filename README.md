@@ -8,7 +8,7 @@ Carga con `APPLOAD` (o arrastra `ETARB.lsp` al dibujo).
 | `ETARBEDIT` | Edita **escala y giro** de todas las etiquetas y las reubica sin cruces |
 | `ETARBESC` | Solo escala: altura del número o `Factor` (2 = doble, 0.5 = mitad); reubica sin cruces |
 | `ETARBROT` | Solo giro: ángulo, dos puntos, `Vista` o `Incremento` |
-| `ETARBESTILO` | Seleccionas un **área** y un **estilo**: cambia solo las etiquetas de esa área (conserva número, tipo, posición, giro y altura) |
+| `ETARBESTILO` | Seleccionas un **área**, el **tipo de punto** y el **estilo nuevo**: cambia solo las etiquetas de ese tipo en esa área (conserva número, tipo, posición, giro y altura) |
 | `ETARBACOMODAR` | Recalcula la posición de las etiquetas del área (Enter = todas) para evitar cruces |
 | `ETARBFRENTE` | Trae todas las etiquetas al frente |
 | `ETARBBORRAR` | Borra todas las etiquetas |
