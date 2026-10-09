@@ -437,5 +437,22 @@
   (prompt (strcat "\n" (itoa (etq:borrar)) " etiquetas borradas."))
   (princ))
 
-(prompt "\nETARB cargado: ETARB, ETARBEDIT, ETARBESC, ETARBROT, ETARBESTILO, ETARBBORRAR.")
+;;; Autocomprobacion de carga: avisa si alguna funcion no quedo definida
+;;; (archivo truncado, copiado a medias, o error al cargar).
+(setq *etq-faltan*
+  (vl-remove-if-not
+    '(lambda (f) (not (member (type (eval f)) '(USUBR SUBR))))
+    '(etq:init etq:crear-bloque etq:lwpv etq:disco etq:anillo etq:circulo
+      etq:aguja etq:poligono etq:etiquetas etq:tipo-de etq:borrar-tipos
+      etq:borrar etq:tipo etq:pos etq:agrupar etq:elegir etq:curva-p
+      etq:dist-recorrido etq:ordenar etq:vecino etq:poner etq:texto
+      etq:est-de etq:cada etq:regen etq:angulo-vista etq:pedir-angulo
+      etq:pedir-estilo etq:escalar etq:aplicar-escala etq:aplicar-giro
+      c:ETARB c:ETARBEDIT c:ETARBESC c:ETARBROT c:ETARBESTILO c:ETARBBORRAR)))
+
+(if *etq-faltan*
+  (prompt (strcat "\nATENCION: ETARB cargado INCOMPLETO. Faltan: "
+                  (apply 'strcat (mapcar '(lambda (f) (strcat (vl-symbol-name f) " ")) *etq-faltan*))
+                  "\nVuelva a copiar el archivo ETARB.lsp completo y cargue de nuevo."))
+  (prompt "\nETARB v4 cargado: ETARB, ETARBEDIT, ETARBESC, ETARBROT, ETARBESTILO, ETARBBORRAR."))
 (princ)
