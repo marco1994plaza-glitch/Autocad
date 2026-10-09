@@ -459,13 +459,30 @@
       (while (> (getvar "CMDACTIVE") 0) (command ""))
       (setvar "CMDECHO" os))))
 
-;; Reconstruye todas las etiquetas existentes (conserva numero, tipo, posicion,
-;; giro y altura) recalculando la direccion para evitar cruces. Si estn no es
-;; nil, ademas cambia todas a ese estilo.
-(defun etq_reconstruir (estn / ss i en ed o est0 items msp)
-  (if (not (setq ss (etq_etiquetas)))
+;; Selecciona etiquetas a mano (area: ventana, cruce, WP, CP...).
+(defun etq_sel-etiquetas ()
+  (ssget (list '(0 . "INSERT")
+               (cons 2 "ETQ_MEDALLON_*,ETQ_LLAMADA_*,ETQ_HEXAGONO_*")
+               (cons 8 (etq_capa)))))
+
+;; Reconstruye las etiquetas del conjunto ss (conserva numero, tipo, posicion,
+;; giro y altura) recalculando la direccion para evitar cruces con las demas
+;; etiquetas y con los arboles. Si estn no es nil, ademas cambia ese conjunto
+;; a ese estilo. Las etiquetas fuera de ss no se tocan.
+(defun etq_reconstruir (ss estn / i en ed o est0 items msp todas otras r)
+  (if (not ss)
     (prompt "\nNo hay etiquetas.")
     (progn
+      ;; etiquetas que NO se tocan: son obstaculos
+      (setq i 0)
+      (repeat (sslength ss) (setq r (cons (ssname ss i) r) i (1+ i)))
+      (if (setq todas (etq_etiquetas))
+        (progn
+          (setq i 0)
+          (repeat (sslength todas)
+            (if (not (member (ssname todas i) r))
+              (setq otras (cons (ssname todas i) otras)))
+            (setq i (1+ i)))))
       (setq i 0)
       (repeat (sslength ss)
         (setq en   (ssname ss i) i (1+ i)
@@ -486,11 +503,16 @@
       ;; borrar originales
       (setq i 0)
       (repeat (sslength ss) (entdel (ssname ss i)) (setq i (1+ i)))
-      ;; obstaculos: los arboles (= puntos de insercion)
+      ;; obstaculos: arboles (= puntos de insercion) y etiquetas que se conservan
       (setq *etq-obs* (mapcar '(lambda (it) (list (car (nth 2 it)) (cadr (nth 2 it))
                                                   (* 0.3 (nth 4 it))))
                               items)
             msp (etq_modelspace))
+      (foreach e otras
+        (setq r (etq_obs-existente e))
+        (if r (setq *etq-obs* (cons r *etq-obs*)))
+        (setq o (vlax-ename->vla-object e) r (etq_ins o))
+        (setq *etq-obs* (cons (list (car r) (cadr r) (* 0.3 *etq-h*)) *etq-obs*)))
       (foreach it items
         (etq_poner-auto msp (if (= (car it) "") nil (car it)) (cadr it)
                         (nth 2 it) (nth 3 it) (nth 4 it) (nth 5 it)))
@@ -633,7 +655,7 @@
       (prompt (strcat "\n" (itoa (sslength ss)) " etiquetas."))
       (etq_aplicar-escala ss)
       (etq_aplicar-giro ss)
-      (etq_reconstruir nil)
+      (etq_reconstruir (etq_etiquetas) nil)
       (etq_cerrar))
     (prompt "\nNo hay etiquetas."))
   (princ))
@@ -641,7 +663,7 @@
 (defun c:ETARBESC (/ ss)
   (etq_init)
   (if (setq ss (etq_etiquetas))
-    (progn (etq_abrir) (etq_aplicar-escala ss) (etq_reconstruir nil) (etq_cerrar))
+    (progn (etq_abrir) (etq_aplicar-escala ss) (etq_reconstruir (etq_etiquetas) nil) (etq_cerrar))
     (prompt "\nNo hay etiquetas."))
   (princ))
 
@@ -652,23 +674,33 @@
     (prompt "\nNo hay etiquetas."))
   (princ))
 
-;; Cambia el estilo de todas las etiquetas (conserva numero, tipo, posicion,
-;; giro y altura) y las reubica sin cruces.
-(defun c:ETARBESTILO ()
+;; Cambia el estilo SOLO de las etiquetas del area seleccionada (conserva
+;; numero, tipo, posicion, giro y altura) y las reubica sin cruces.
+(defun c:ETARBESTILO (/ ss)
   (etq_init)
   (if (etq_etiquetas)
     (progn
-      (setq *etq-est* (etq_pedir-estilo *etq-est*))
       (etq_abrir)
-      (etq_reconstruir *etq-est*)
+      (prompt "\nSeleccione el AREA con las etiquetas a cambiar (ventana, cruce, WP, CP...): ")
+      (if (setq ss (etq_sel-etiquetas))
+        (progn
+          (setq *etq-est* (etq_pedir-estilo *etq-est*))
+          (etq_reconstruir ss *etq-est*))
+        (prompt "\nNada seleccionado."))
       (etq_cerrar))
     (prompt "\nNo hay etiquetas."))
   (princ))
 
-(defun c:ETARBACOMODAR ()
+;; Reubica sin cruces las etiquetas del area (Enter = todas).
+(defun c:ETARBACOMODAR (/ ss)
   (etq_init)
   (if (etq_etiquetas)
-    (progn (etq_abrir) (etq_reconstruir nil) (etq_cerrar))
+    (progn
+      (etq_abrir)
+      (prompt "\nSeleccione el AREA con las etiquetas a reubicar <Enter = todas>: ")
+      (setq ss (etq_sel-etiquetas))
+      (etq_reconstruir (if ss ss (etq_etiquetas)) nil)
+      (etq_cerrar))
     (prompt "\nNo hay etiquetas."))
   (princ))
 
@@ -696,7 +728,7 @@
       etq_ins etq_max-num etq_sin-etiqueta etq_tipo etq_pos etq_agrupar etq_elegir
       etq_curva-p etq_dist-recorrido etq_ordenar etq_vecino etq_obs-de
       etq_obs-existente etq_holgura etq_mejor-dir etq_poner etq_poner-auto
-      etq_frente etq_reconstruir etq_cada etq_regen etq_angulo-vista
+      etq_frente etq_sel-etiquetas etq_reconstruir etq_cada etq_regen etq_angulo-vista
       etq_pedir-angulo etq_pedir-estilo etq_escalar etq_aplicar-escala
       etq_aplicar-giro etq_abrir etq_cerrar
       c:ETARB c:ETARBEDIT c:ETARBESC c:ETARBROT c:ETARBESTILO c:ETARBACOMODAR
@@ -706,5 +738,5 @@
   (prompt (strcat "\nATENCION: ETARB cargado INCOMPLETO. Faltan: "
                   (apply 'strcat (mapcar '(lambda (f) (strcat (vl-symbol-name f) " ")) *etq-faltan*))
                   "\nVuelva a copiar el archivo ETARB.lsp completo y cargue de nuevo."))
-  (prompt "\nETARB v7 cargado: ETARB, ETARBEDIT, ETARBESC, ETARBROT, ETARBESTILO, ETARBACOMODAR, ETARBFRENTE, ETARBBORRAR."))
+  (prompt "\nETARB v8 cargado: ETARB, ETARBEDIT, ETARBESC, ETARBROT, ETARBESTILO, ETARBACOMODAR, ETARBFRENTE, ETARBBORRAR."))
 (princ)
